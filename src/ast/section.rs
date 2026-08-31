@@ -33,6 +33,9 @@ pub enum Section<T = ()> {
     /// `%generate_buildrequires` — shell bodies.
     BuildScript {
         kind: BuildScriptKind,
+        /// Placement from the build-script section header.
+        #[cfg_attr(feature = "serde", serde(default))]
+        placement: BuildScriptPlacement,
         body: ShellBody<T>,
         data: T,
     },
@@ -90,6 +93,22 @@ pub enum BuildScriptKind {
     Clean,
     /// `%generate_buildrequires` — rpm ≥ 4.15.
     GenerateBuildRequires,
+}
+
+/// Source-level placement of a build-script section fragment.
+///
+/// RPM 4.20 and later use `-p` and `-a` to augment the main section.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[non_exhaustive]
+pub enum BuildScriptPlacement {
+    /// The main section has no placement flag.
+    #[default]
+    Main,
+    /// `-p` prepends the section fragment.
+    Prepend,
+    /// `-a` appends the section fragment.
+    Append,
 }
 
 /// Argument of `%package`.

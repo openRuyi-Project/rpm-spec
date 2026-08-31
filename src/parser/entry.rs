@@ -486,8 +486,14 @@ fn strip_section(s: crate::ast::Section<Span>) -> crate::ast::Section<()> {
             content: content.into_iter().map(strip_preamble_content).collect(),
             data: (),
         },
-        Section::BuildScript { kind, body, .. } => Section::BuildScript {
+        Section::BuildScript {
             kind,
+            placement,
+            body,
+            ..
+        } => Section::BuildScript {
+            kind,
+            placement,
             body: strip_shell_body(body),
             data: (),
         },

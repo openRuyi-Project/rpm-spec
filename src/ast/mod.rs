@@ -54,8 +54,8 @@ pub use scriptlet::{
     ScriptletKind, Trigger, TriggerKind,
 };
 pub use section::{
-    BuildScriptKind, PackageName, Section, ShellBody, ShellCondBranch, ShellCondElse,
-    ShellConditional, SubpkgRef, TextBody,
+    BuildScriptKind, BuildScriptPlacement, PackageName, Section, ShellBody, ShellCondBranch,
+    ShellCondElse, ShellConditional, SubpkgRef, TextBody,
 };
 pub use span::Span;
 pub use text::{

@@ -1,8 +1,8 @@
 //! Section dispatch + headers for simple sections.
 
 use crate::ast::{
-    BuildScriptKind, PackageName, PreambleContent, Section, ShellBody, SubpkgRef, Text, TextBody,
-    TextSegment,
+    BuildScriptKind, BuildScriptPlacement, PackageName, PreambleContent, Section, ShellBody,
+    SubpkgRef, Text, TextBody, TextSegment,
 };
 
 use super::changelog::print_section_changelog;
@@ -19,7 +19,12 @@ pub(crate) fn print_section<T>(p: &mut Printer<'_>, section: &Section<T>) {
         Section::Package {
             name_arg, content, ..
         } => print_package(p, name_arg, content),
-        Section::BuildScript { kind, body, .. } => print_build_script(p, *kind, body),
+        Section::BuildScript {
+            kind,
+            placement,
+            body,
+            ..
+        } => print_build_script(p, *kind, *placement, body),
         Section::Files {
             subpkg,
             file_lists,
@@ -80,9 +85,19 @@ fn print_package<T>(p: &mut Printer<'_>, name: &PackageName, content: &[Preamble
 // Build-scripts
 // ---------------------------------------------------------------------
 
-fn print_build_script<T>(p: &mut Printer<'_>, kind: BuildScriptKind, body: &ShellBody<T>) {
+fn print_build_script<T>(
+    p: &mut Printer<'_>,
+    kind: BuildScriptKind,
+    placement: BuildScriptPlacement,
+    body: &ShellBody<T>,
+) {
     p.write_indent();
     p.emit(TokenKind::SectionKeyword, build_script_keyword(kind));
+    match placement {
+        BuildScriptPlacement::Main => {}
+        BuildScriptPlacement::Prepend => p.raw(" -p"),
+        BuildScriptPlacement::Append => p.raw(" -a"),
+    }
     p.newline();
     print_shell_body(p, body);
 }
@@ -217,6 +232,7 @@ mod tests {
     fn prep_section() {
         let s: Section<()> = Section::BuildScript {
             kind: BuildScriptKind::Prep,
+            placement: BuildScriptPlacement::Main,
             body: ShellBody {
                 conditionals: Vec::new(),
                 lines: vec![Text::from("autosetup")],

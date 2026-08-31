@@ -5,7 +5,7 @@
 //! canonical spec is written without multi-dep lines, so item counts
 //! match across the round-trip.
 
-use rpm_spec::ast::SpecFile;
+use rpm_spec::ast::{BuildScriptPlacement, Section, SpecFile, SpecItem};
 use rpm_spec::parser::parse_str;
 use rpm_spec::printer::{PrintWriter, PrinterConfig, TokenKind, print, print_to, print_with};
 
@@ -83,6 +83,45 @@ fn canonical_roundtrip_default_config() {
         ast1, ast2,
         "round-trip mismatch.\n\n=== PRINTED ===\n{printed}\n=== END ==="
     );
+}
+
+#[test]
+fn build_script_placement_roundtrips() {
+    let source = "\
+%install -p
+echo before
+%install
+echo main
+%install -a
+echo after
+";
+    let parsed1 = parse_str(source);
+    assert!(parsed1.diagnostics.is_empty(), "{:?}", parsed1.diagnostics);
+    let ast1 = parsed1.spec;
+    let placements: Vec<_> = ast1
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            SpecItem::Section(section) => match section.as_ref() {
+                Section::BuildScript { placement, .. } => Some(*placement),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        placements,
+        vec![
+            BuildScriptPlacement::Prepend,
+            BuildScriptPlacement::Main,
+            BuildScriptPlacement::Append,
+        ]
+    );
+
+    let printed = print(&ast1);
+    let parsed2 = parse_str(&printed);
+    assert!(parsed2.diagnostics.is_empty(), "{:?}", parsed2.diagnostics);
+    assert_eq!(ast1, parsed2.spec, "round-trip changed AST: {printed:?}");
 }
 
 #[test]

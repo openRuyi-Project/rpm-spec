@@ -10,8 +10,8 @@
 use nom::{IResult, error::ErrorKind, error_position};
 
 use crate::ast::{
-    BuildScriptKind, PackageName, PreambleContent, Section, ShellBody, ShellCondBranch,
-    ShellCondElse, ShellConditional, Span, SubpkgRef, Text, TextBody, TextSegment,
+    BuildScriptKind, BuildScriptPlacement, PackageName, PreambleContent, Section, ShellBody,
+    ShellCondBranch, ShellCondElse, ShellConditional, Span, SubpkgRef, Text, TextBody, TextSegment,
 };
 use crate::parse_result::codes;
 
@@ -719,9 +719,7 @@ fn parse_build_script<'a>(
     let start = input;
     let (after_ws, _) = space0(input)?;
     let (after_kw, _) = nom::Input::take_split(&after_ws, keyword.len());
-    // Build-scripts have no header args in practice; consume the rest of
-    // the header line (which may include `# trailing comment`).
-    let (after_header, _) = line_terminator(after_kw)?;
+    let (after_header, placement) = parse_build_script_header_tail(after_kw)?;
 
     let (after_body, body) = collect_shell_body_until_section_header(state, after_header);
     let span = span_between(&start, &after_body);
@@ -729,10 +727,32 @@ fn parse_build_script<'a>(
         after_body,
         Section::BuildScript {
             kind,
+            placement,
             body,
             data: span,
         },
     ))
+}
+
+fn parse_build_script_header_tail<'a>(
+    input: Input<'a>,
+) -> IResult<Input<'a>, BuildScriptPlacement> {
+    let Ok((after_space, _)) = space1(input) else {
+        let (after_header, _) = line_terminator(input)?;
+        return Ok((after_header, BuildScriptPlacement::Main));
+    };
+    let fragment = *after_space.fragment();
+    let placement = if fragment.starts_with("-p") {
+        BuildScriptPlacement::Prepend
+    } else if fragment.starts_with("-a") {
+        BuildScriptPlacement::Append
+    } else {
+        let (after_header, _) = line_terminator(input)?;
+        return Ok((after_header, BuildScriptPlacement::Main));
+    };
+    let (after_flag, _) = nom::Input::take_split(&after_space, 2);
+    let (after_header, _) = line_terminator(after_flag)?;
+    Ok((after_header, placement))
 }
 
 // ---------------------------------------------------------------------
