@@ -11,7 +11,9 @@
 
 use nom::{IResult, error::ErrorKind, error_position};
 
-use crate::ast::{ChangelogDate, ChangelogEntry, Month, Section, Span, Text, Weekday};
+use crate::ast::{
+    ChangelogDate, ChangelogEntry, ChangelogItem, MacroRef, Month, Section, Span, Text, Weekday,
+};
 use crate::parse_result::codes;
 
 use super::input::{Input, span_between};
@@ -31,24 +33,18 @@ pub fn parse_changelog_section<'a>(
     let (after_kw, _) = nom::Input::take_split(&after_ws, "%changelog".len());
     let (after_header, _) = line_terminator(after_kw)?;
 
-    let (after_body, entries) = collect_entries(state, after_header);
+    let (after_body, items) = collect_items(state, after_header);
     let span = span_between(&start, &after_body);
 
-    Ok((
-        after_body,
-        Section::Changelog {
-            entries,
-            data: span,
-        },
-    ))
+    Ok((after_body, Section::Changelog { items, data: span }))
 }
 
-fn collect_entries<'a>(
+fn collect_items<'a>(
     state: &ParserState,
     input: Input<'a>,
-) -> (Input<'a>, Vec<ChangelogEntry<Span>>) {
+) -> (Input<'a>, Vec<ChangelogItem<Span>>) {
     let mut cursor = input;
-    let mut entries: Vec<ChangelogEntry<Span>> = Vec::new();
+    let mut items = Vec::new();
 
     while !cursor.fragment().is_empty() {
         if peek_section_header(cursor).is_some() {
@@ -65,6 +61,15 @@ fn collect_entries<'a>(
         if frag.is_empty() {
             break;
         }
+
+        if line_may_start_macro_statement(cursor) {
+            if let Ok((rest, statement)) = parse_changelog_statement(state, cursor) {
+                items.push(statement);
+                cursor = rest;
+                continue;
+            }
+        }
+
         if !frag.starts_with('*') {
             // Unexpected text before the first `*` — consume one physical
             // line so we keep making progress.
@@ -96,7 +101,7 @@ fn collect_entries<'a>(
                 if rest.location_offset() == cursor.location_offset() {
                     break;
                 }
-                entries.push(entry);
+                items.push(ChangelogItem::Entry(entry));
                 cursor = rest;
             }
             Err(_) => {
@@ -118,7 +123,52 @@ fn collect_entries<'a>(
         }
     }
 
-    (cursor, entries)
+    (cursor, items)
+}
+
+/// Parses one changelog line as a standalone macro reference.
+fn parse_changelog_statement<'a>(
+    state: &ParserState,
+    input: Input<'a>,
+) -> IResult<Input<'a>, ChangelogItem<Span>> {
+    let probe_state = ParserState::new();
+    parse_changelog_macro_line(&probe_state, input)?;
+
+    let start = input;
+    let (rest, macro_ref) = parse_changelog_macro_line(state, input)?;
+    Ok((
+        rest,
+        ChangelogItem::Statement {
+            macro_ref,
+            data: span_between(&start, &rest),
+        },
+    ))
+}
+
+/// Returns whether the next physical line parses as a standalone macro reference.
+fn next_line_is_changelog_statement(input: Input<'_>) -> bool {
+    if !line_may_start_macro_statement(input) {
+        return false;
+    }
+    let probe_state = ParserState::new();
+    parse_changelog_macro_line(&probe_state, input).is_ok()
+}
+
+/// Parses one changelog macro statement without crossing its physical line.
+fn parse_changelog_macro_line<'a>(
+    state: &ParserState,
+    input: Input<'a>,
+) -> IResult<Input<'a>, MacroRef> {
+    let (rest, line) = physical_line(input)?;
+    let (_, macro_ref) = super::macros::parse_standalone_macro_ref(state, line)?;
+    Ok((rest, macro_ref))
+}
+
+fn line_may_start_macro_statement(input: Input<'_>) -> bool {
+    input
+        .fragment()
+        .trim_start_matches([' ', '\t'])
+        .starts_with('%')
 }
 
 fn line_is_blank(s: &str) -> bool {
@@ -168,6 +218,9 @@ pub fn parse_changelog_entry<'a>(
     let mut body: Vec<Text> = Vec::new();
     while !cursor.fragment().is_empty() {
         if peek_section_header(cursor).is_some() {
+            break;
+        }
+        if next_line_is_changelog_statement(cursor) {
             break;
         }
         // Stop at the next entry header (line starting with `*` after ws).
@@ -388,9 +441,15 @@ mod tests {
         sec
     }
 
-    fn entries(sec: &Section<Span>) -> &Vec<ChangelogEntry<Span>> {
+    fn entries(sec: &Section<Span>) -> Vec<&ChangelogEntry<Span>> {
         match sec {
-            Section::Changelog { entries, .. } => entries,
+            Section::Changelog { items, .. } => items
+                .iter()
+                .filter_map(|item| match item {
+                    ChangelogItem::Entry(entry) => Some(entry),
+                    ChangelogItem::Statement { .. } => None,
+                })
+                .collect(),
             _ => panic!(),
         }
     }
@@ -401,7 +460,7 @@ mod tests {
         let sec = parse(src);
         let es = entries(&sec);
         assert_eq!(es.len(), 1);
-        let e = &es[0];
+        let e = es[0];
         assert_eq!(e.date.weekday, Weekday::Wed);
         assert_eq!(e.date.month, Month::May);
         assert_eq!(e.date.day, 14);

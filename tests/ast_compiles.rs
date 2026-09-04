@@ -4,10 +4,10 @@
 use pretty_assertions::assert_eq;
 use rpm_spec::ast::{
     AttrField, AttrFields, BoolDep, BuildCondStyle, BuildCondition, ChangelogDate, ChangelogEntry,
-    Comment, CommentStyle, CondBranch, CondExpr, CondKind, Conditional, DepAtom, DepExpr,
-    FileDirective, FileEntry, FilePath, FilesContent, IncludeDirective, MacroDef, MacroDefKind,
-    Month, PreambleContent, PreambleItem, Section, SpecFile, SpecItem, Tag, TagValue, Text,
-    TextBody, Weekday,
+    ChangelogItem, Comment, CommentStyle, CondBranch, CondExpr, CondKind, Conditional, DepAtom,
+    DepExpr, FileDirective, FileEntry, FilePath, FilesContent, IncludeDirective, MacroDef,
+    MacroDefKind, Month, PreambleContent, PreambleItem, Section, SpecFile, SpecItem, Tag, TagValue,
+    Text, TextBody, Weekday,
 };
 
 fn assert_send_sync<T: Send + Sync>() {}
@@ -150,7 +150,7 @@ fn build_changelog_entry() {
         body: vec![Text::from("- initial release")],
         data: (),
     };
-    let _ = entry;
+    let _item = ChangelogItem::Entry(entry);
 }
 
 #[test]

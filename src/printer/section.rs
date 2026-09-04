@@ -35,7 +35,7 @@ pub(crate) fn print_section<T>(p: &mut Printer<'_>, section: &Section<T>) {
         Section::Trigger(t) => print_trigger(p, t),
         Section::FileTrigger(ft) => print_file_trigger(p, ft),
         Section::Verify { subpkg, body, .. } => print_verify_section(p, subpkg.as_ref(), body),
-        Section::Changelog { entries, .. } => print_section_changelog(p, entries),
+        Section::Changelog { items, .. } => print_section_changelog(p, items),
         Section::SourceList { entries, .. } => print_list_section(p, "%sourcelist", entries),
         Section::PatchList { entries, .. } => print_list_section(p, "%patchlist", entries),
         Section::Sepolicy { subpkg, body, .. } => print_sepolicy(p, subpkg.as_ref(), body),

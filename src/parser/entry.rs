@@ -472,7 +472,7 @@ fn strip_shell_cond_else(
 }
 
 fn strip_section(s: crate::ast::Section<Span>) -> crate::ast::Section<()> {
-    use crate::ast::{ChangelogEntry, FileTrigger, Scriptlet, Section, Trigger};
+    use crate::ast::{ChangelogEntry, ChangelogItem, FileTrigger, Scriptlet, Section, Trigger};
     match s {
         Section::Description { subpkg, body, .. } => Section::Description {
             subpkg,
@@ -564,16 +564,22 @@ fn strip_section(s: crate::ast::Section<Span>) -> crate::ast::Section<()> {
             body: strip_shell_body(body),
             data: (),
         },
-        Section::Changelog { entries, .. } => Section::Changelog {
-            entries: entries
+        Section::Changelog { items, .. } => Section::Changelog {
+            items: items
                 .into_iter()
-                .map(|e| ChangelogEntry {
-                    date: e.date,
-                    author: e.author,
-                    email: e.email,
-                    version: e.version,
-                    body: e.body,
-                    data: (),
+                .map(|item| match item {
+                    ChangelogItem::Entry(entry) => ChangelogItem::Entry(ChangelogEntry {
+                        date: entry.date,
+                        author: entry.author,
+                        email: entry.email,
+                        version: entry.version,
+                        body: entry.body,
+                        data: (),
+                    }),
+                    ChangelogItem::Statement { macro_ref, .. } => ChangelogItem::Statement {
+                        macro_ref,
+                        data: (),
+                    },
                 })
                 .collect(),
             data: (),

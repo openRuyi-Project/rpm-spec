@@ -6,6 +6,19 @@ The format roughly follows [Keep a Changelog](https://keepachangelog.com/),
 and this crate adheres to [Semantic Versioning](https://semver.org/) once
 it reaches `0.1.0`.
 
+## Unreleased
+
+### Added
+
+- `%changelog` sections preserve standalone macro statements such as
+  `%autochangelog` and `%{?autochangelog}` as ordered AST items.
+
+### Changed
+
+- **Breaking (pre-1.0):** `Section::Changelog::entries` is replaced by
+  `items: Vec<ChangelogItem<T>>` so dated entries and macro statements retain
+  their source order.
+
 ## 0.4.1
 
 ### Fixed

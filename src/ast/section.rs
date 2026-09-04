@@ -6,7 +6,7 @@
 
 #![allow(missing_docs)]
 
-use super::changelog::ChangelogEntry;
+use super::changelog::ChangelogItem;
 use super::cond::{CondExpr, CondKind};
 use super::files::FilesContent;
 use super::preamble::PreambleContent;
@@ -58,7 +58,7 @@ pub enum Section<T = ()> {
     },
     /// `%changelog` — the single global changelog block.
     Changelog {
-        entries: Vec<ChangelogEntry<T>>,
+        items: Vec<ChangelogItem<T>>,
         data: T,
     },
     /// `%sourcelist` — alternative to numbered `SourceN:` tags.

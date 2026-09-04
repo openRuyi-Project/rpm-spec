@@ -329,20 +329,22 @@ fn file_trigger_with_priority() {
 #[test]
 fn changelog_one_entry() {
     let r = parse_str(FULL_SPEC);
-    let entries = r
+    let items = r
         .spec
         .items
         .iter()
         .find_map(|i| match i {
             SpecItem::Section(s) => match s.as_ref() {
-                Section::Changelog { entries, .. } => Some(entries),
+                Section::Changelog { items, .. } => Some(items),
                 _ => None,
             },
             _ => None,
         })
         .expect("%changelog");
-    assert_eq!(entries.len(), 1);
-    let e = &entries[0];
+    assert_eq!(items.len(), 1);
+    let rpm_spec::ast::ChangelogItem::Entry(e) = &items[0] else {
+        panic!("expected a dated changelog entry")
+    };
     assert_eq!(e.date.year, 2025);
     assert_eq!(e.date.month, Month::May);
     assert_eq!(e.date.weekday, Weekday::Wed);

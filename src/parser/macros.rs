@@ -292,6 +292,15 @@ pub fn parse_top_macro_call<'a>(
     state: &ParserState,
     input: Input<'a>,
 ) -> IResult<Input<'a>, SpecItem<Span>> {
+    let (rest, macro_ref) = parse_standalone_macro_ref(state, input)?;
+    Ok((rest, SpecItem::Statement(Box::new(macro_ref))))
+}
+
+/// Parses a macro reference followed only by whitespace and a line ending.
+pub(crate) fn parse_standalone_macro_ref<'a>(
+    state: &ParserState,
+    input: Input<'a>,
+) -> IResult<Input<'a>, crate::ast::MacroRef> {
     let (after_ws, _) = space0(input)?;
     let frag = *after_ws.fragment();
     if !frag.starts_with('%') {
@@ -299,8 +308,7 @@ pub fn parse_top_macro_call<'a>(
     }
     let (after_macro, m) = parse_macro_ref(state, after_ws)?;
     let (after_term, _) = line_terminator(after_macro)?;
-    let _ = after_term;
-    Ok((after_term, SpecItem::Statement(Box::new(m))))
+    Ok((after_term, m))
 }
 
 fn require_space_after_keyword<'a>(input: Input<'a>) -> IResult<Input<'a>, ()> {

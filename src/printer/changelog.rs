@@ -1,20 +1,32 @@
-//! `%changelog` entry rendering.
+//! `%changelog` content rendering.
 
-use crate::ast::{ChangelogEntry, Month, Weekday};
+use crate::ast::{ChangelogEntry, ChangelogItem, Month, Weekday};
 
-use super::text::{print_body_literal_escaped, print_text};
+use super::text::{print_body_literal_escaped, print_macro_ref, print_text};
 use super::{Printer, TokenKind};
 
-/// Render a `Section::Changelog` body (header line + entries).
-pub(crate) fn print_changelog<T>(p: &mut Printer<'_>, entries: &[ChangelogEntry<T>]) {
+/// Render a `Section::Changelog` body (header line + ordered items).
+pub(crate) fn print_changelog<T>(p: &mut Printer<'_>, items: &[ChangelogItem<T>]) {
     p.write_indent();
     p.emit(TokenKind::SectionKeyword, "%changelog");
     p.newline();
-    for (i, entry) in entries.iter().enumerate() {
-        if i > 0 {
-            p.newline();
+    let mut previous_was_entry = false;
+    for item in items {
+        match item {
+            ChangelogItem::Entry(entry) => {
+                if previous_was_entry {
+                    p.newline();
+                }
+                print_entry(p, entry);
+                previous_was_entry = true;
+            }
+            ChangelogItem::Statement { macro_ref, .. } => {
+                p.write_indent();
+                print_macro_ref(p, macro_ref);
+                p.newline();
+                previous_was_entry = false;
+            }
         }
-        print_entry(p, entry);
     }
 }
 
@@ -82,8 +94,8 @@ fn month_str(m: Month) -> &'static str {
 }
 
 /// Helper so `section.rs` can route a `Section::Changelog` here.
-pub(crate) fn print_section_changelog<T>(p: &mut Printer<'_>, entries: &[ChangelogEntry<T>]) {
-    print_changelog(p, entries);
+pub(crate) fn print_section_changelog<T>(p: &mut Printer<'_>, items: &[ChangelogItem<T>]) {
+    print_changelog(p, items);
 }
 
 #[cfg(test)]
@@ -112,7 +124,12 @@ mod tests {
         let cfg = PrinterConfig::default();
         let mut buf = String::new();
         let mut p = Printer::new(&mut buf, &cfg);
-        print_changelog(&mut p, entries);
+        let items = entries
+            .iter()
+            .cloned()
+            .map(ChangelogItem::Entry)
+            .collect::<Vec<_>>();
+        print_changelog(&mut p, &items);
         buf
     }
 

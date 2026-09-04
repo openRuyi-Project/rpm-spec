@@ -32,7 +32,7 @@ pub mod section;
 pub mod span;
 pub mod text;
 
-pub use changelog::{ChangelogDate, ChangelogEntry, Month, Weekday};
+pub use changelog::{ChangelogDate, ChangelogEntry, ChangelogItem, Month, Weekday};
 pub use cond::{CondBranch, CondExpr, CondKind, Conditional};
 pub use deps::{BoolDep, DepAtom, DepConstraint, DepExpr, EVR, VerOp};
 // `ConcatPart` is re-exported for AST consumers (analysers, formatters)

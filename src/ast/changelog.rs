@@ -1,4 +1,4 @@
-//! `%changelog` section entries.
+//! `%changelog` section contents.
 //!
 //! Entries appear in reverse chronological order in the source. This crate
 //! preserves them in source order; consumers may sort if needed.
@@ -7,7 +7,18 @@
 
 #![allow(missing_docs)]
 
-use super::text::Text;
+use super::text::{MacroRef, Text};
+
+/// One source-ordered item inside a `%changelog` section.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[non_exhaustive]
+pub enum ChangelogItem<T = ()> {
+    /// A conventional dated changelog entry.
+    Entry(ChangelogEntry<T>),
+    /// A standalone macro invocation such as `%autochangelog`.
+    Statement { macro_ref: MacroRef, data: T },
+}
 
 /// One `%changelog` entry.
 ///
