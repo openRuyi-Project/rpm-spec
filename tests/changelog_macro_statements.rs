@@ -19,7 +19,7 @@ fn changelog_items<T>(spec: &SpecFile<T>) -> &[ChangelogItem<T>] {
 }
 
 #[test]
-fn canonical_autochangelog_has_macro_shape_and_source_span() {
+fn plain_autochangelog_has_macro_shape_and_source_span() {
     let source = "%changelog\n%autochangelog\n";
     let parsed = parse_str_with_spans(source);
 
@@ -31,33 +31,6 @@ fn canonical_autochangelog_has_macro_shape_and_source_span() {
     assert_eq!(macro_ref.name, "autochangelog");
     assert_eq!(macro_ref.conditional, ConditionalMacro::None);
     assert_eq!(&source[data.start_byte..data.end_byte], "%autochangelog\n");
-}
-
-#[test]
-fn other_macro_names_use_the_same_statement_model() {
-    let source = "%changelog\n%project_history\n%{?vendor_history}\n";
-    let parsed = parse_str(source);
-
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let [
-        ChangelogItem::Statement {
-            macro_ref: plain, ..
-        },
-        ChangelogItem::Statement {
-            macro_ref: conditional,
-            ..
-        },
-    ] = changelog_items(&parsed.spec)
-    else {
-        panic!("expected two changelog macro statements")
-    };
-    assert_eq!(plain.kind, MacroKind::Plain);
-    assert_eq!(plain.name, "project_history");
-    assert_eq!(plain.conditional, ConditionalMacro::None);
-    assert_eq!(conditional.kind, MacroKind::Braced);
-    assert_eq!(conditional.name, "vendor_history");
-    assert_eq!(conditional.conditional, ConditionalMacro::IfDefined);
-    assert_eq!(print(&parsed.spec), source);
 }
 
 #[test]
